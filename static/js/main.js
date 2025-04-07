@@ -3,6 +3,9 @@
 // Store the PDF text globally to use when asking questions
 let pdfText = '';
 
+// Store chat history
+let chatHistory = [];
+
 // DOM elements
 const uploadBtn = document.getElementById('uploadBtn');
 const askBtn = document.getElementById('askBtn');
@@ -15,9 +18,8 @@ const uploadStatus = document.getElementById('uploadStatus');
 const uploadProgress = document.getElementById('uploadProgress');
 const progressBar = document.querySelector('.progress-bar');
 const uploadSection = document.getElementById('upload-section');
-const questionSection = document.getElementById('question-section');
-const answerSection = document.getElementById('answer-section');
-const answerContent = document.getElementById('answerContent');
+const chatSection = document.getElementById('chat-section');
+const chatMessages = document.getElementById('chatMessages');
 const loadingAnswer = document.getElementById('loadingAnswer');
 const errorAlert = document.getElementById('errorAlert');
 const errorMessage = document.getElementById('errorMessage');
@@ -31,21 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     askBtn.addEventListener('click', askQuestion);
     
     // Quit button
-    document.getElementById('quitBtn').addEventListener('click', function() {
-        // Reset all sections to initial state
-        resetUI();
-    });
-    
-    // New question button
-    newQuestionBtn.addEventListener('click', function() {
-        // Hide answer section and show question section
-        answerSection.classList.add('d-none');
-        questionInput.value = '';
-        questionSection.classList.remove('d-none');
-    });
-    
-    // New PDF button
-    newPdfBtn.addEventListener('click', function() {
+    quitBtn.addEventListener('click', function() {
         // Reset all sections to initial state
         resetUI();
     });
@@ -67,7 +55,41 @@ document.addEventListener('DOMContentLoaded', function() {
             askQuestion();
         }
     });
+    
+    // Auto-scroll to bottom of chat when new content is added
+    chatMessages.addEventListener('DOMNodeInserted', function(event) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
 });
+
+// Function to add a message to the chat
+function addMessageToChat(text, sender, timestamp = new Date()) {
+    // Create message container
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender === 'user' ? 'user-message' : 'ai-message'}`;
+    
+    // Add message text
+    messageDiv.textContent = text;
+    
+    // Add timestamp
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'message-time';
+    timeSpan.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    messageDiv.appendChild(timeSpan);
+    
+    // Add to chat container
+    chatMessages.appendChild(messageDiv);
+    
+    // Auto scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Save to history
+    chatHistory.push({
+        text: text,
+        sender: sender,
+        timestamp: timestamp
+    });
+}
 
 // Function to upload PDF
 function uploadPdf() {
@@ -137,10 +159,26 @@ function uploadPdf() {
         uploadStatus.textContent = 'PDF processed successfully!';
         uploadStatus.className = 'mt-3 text-success';
         
-        // After a short delay, move to question section
+        // After a short delay, move to chat section
         setTimeout(() => {
             uploadSection.classList.add('d-none');
-            questionSection.classList.remove('d-none');
+            chatSection.classList.remove('d-none');
+            
+            // Clear any existing chat history
+            chatHistory = [];
+            chatMessages.innerHTML = '';
+            
+            // Add welcome message
+            const systemMessageDiv = document.createElement('div');
+            systemMessageDiv.className = 'system-message text-center p-2 mb-3';
+            systemMessageDiv.innerHTML = `
+                <span class="badge bg-info">PDF Loaded Successfully</span>
+                <p class="small mt-1">Ask any question about the content of your PDF document.</p>
+            `;
+            chatMessages.appendChild(systemMessageDiv);
+            
+            // Focus on question input
+            questionInput.focus();
         }, 1000);
     })
     .catch(error => {
@@ -172,6 +210,14 @@ function askQuestion() {
     
     // Disable ask button and show loading
     askBtn.disabled = true;
+    
+    // Add user question to chat
+    addMessageToChat(question, 'user');
+    
+    // Clear question input
+    questionInput.value = '';
+    
+    // Show loading indicator in chat
     loadingAnswer.classList.remove('d-none');
     
     // Hide any previous errors
@@ -200,15 +246,14 @@ function askQuestion() {
         // Hide loading
         loadingAnswer.classList.add('d-none');
         
-        // Display answer
-        answerContent.textContent = data.answer;
-        
-        // Show answer section and hide question section
-        questionSection.classList.add('d-none');
-        answerSection.classList.remove('d-none');
+        // Add AI response to chat
+        addMessageToChat(data.answer, 'ai');
         
         // Re-enable ask button
         askBtn.disabled = false;
+        
+        // Focus on question input
+        questionInput.focus();
     })
     .catch(error => {
         console.error('Error:', error);
@@ -217,6 +262,15 @@ function askQuestion() {
         // Hide loading and re-enable ask button
         loadingAnswer.classList.add('d-none');
         askBtn.disabled = false;
+        
+        // Add error message to chat
+        const systemErrorDiv = document.createElement('div');
+        systemErrorDiv.className = 'system-message text-center p-2 mb-3';
+        systemErrorDiv.innerHTML = `
+            <span class="badge bg-danger">Error</span>
+            <p class="small mt-1">${error.message}</p>
+        `;
+        chatMessages.appendChild(systemErrorDiv);
     });
 }
 
@@ -252,13 +306,15 @@ function resetUI() {
     // Reset PDF text
     pdfText = '';
     
+    // Reset chat history
+    chatHistory = [];
+    
     // Reset question input
     questionInput.value = '';
     
     // Reset sections visibility
     uploadSection.classList.remove('d-none');
-    questionSection.classList.add('d-none');
-    answerSection.classList.add('d-none');
+    chatSection.classList.add('d-none');
     loadingAnswer.classList.add('d-none');
     
     // Hide any errors

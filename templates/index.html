@@ -43,44 +43,45 @@
             </div>
         </div>
 
-        <!-- Step 2: Ask Questions -->
-        <div class="card mb-4 d-none" id="question-section">
+        <!-- Chat Interface -->
+        <div class="card mb-4 d-none" id="chat-section">
             <div class="card-header">
-                <h4><i class="fas fa-question-circle me-2"></i>Step 2: Ask Questions</h4>
+                <h4><i class="fas fa-comments me-2"></i>Chat with Your PDF</h4>
+                <button class="btn btn-sm btn-secondary float-end" id="quitBtn">
+                    <i class="fas fa-times-circle me-2"></i>Quit & Upload New PDF
+                </button>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="questionInput" class="form-label">Your Question:</label>
-                    <textarea class="form-control" id="questionInput" rows="3" placeholder="Ask a question about the PDF content..."></textarea>
+                <!-- Chat Messages Container -->
+                <div id="chatMessages" class="chat-container mb-3">
+                    <div class="system-message text-center p-2 mb-3">
+                        <span class="badge bg-info">PDF Loaded Successfully</span>
+                        <p class="small mt-1">Ask any question about the content of your PDF document.</p>
+                    </div>
+                    <!-- Chat messages will be displayed here -->
                 </div>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-success" id="askBtn">
-                        <i class="fas fa-search me-2"></i>Get Answer
-                    </button>
-                    <button class="btn btn-secondary mt-2" id="quitBtn">
-                        <i class="fas fa-times-circle me-2"></i>Quit & Upload New PDF
-                    </button>
+                
+                <!-- Question Input Area -->
+                <div class="question-input-container">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="questionInput" rows="2" 
+                                  placeholder="Ask a question about the PDF content..."></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-success" id="askBtn">
+                            <i class="fas fa-paper-plane me-2"></i>Send
+                        </button>
+                    </div>
                 </div>
-                <div class="mt-3 d-none" id="loadingAnswer">
-                    <div class="d-flex justify-content-center">
+                
+                <!-- Loading Indicator (appears within chat) -->
+                <div class="d-none" id="loadingAnswer">
+                    <div class="d-flex justify-content-center my-3">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
                     </div>
-                    <p class="text-center mt-2">Getting answer from AI...</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Answer Display -->
-        <div class="card mb-4 d-none" id="answer-section">
-            <div class="card-header">
-                <h4><i class="fas fa-comment-dots me-2"></i>Answer</h4>
-            </div>
-            <div class="card-body">
-                <div id="answerContent" class="p-3 border rounded"></div>
-                <button class="btn btn-link mt-3" id="newQuestionBtn">Ask another question</button>
-                <button class="btn btn-link mt-3" id="newPdfBtn">Upload a new PDF</button>
             </div>
         </div>
 
