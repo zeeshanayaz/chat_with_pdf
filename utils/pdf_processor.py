@@ -1,9 +1,16 @@
 import os
 import PyPDF2
+import logging
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Get OpenAI API key from environment variables
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    logging.warning("OpenAI API key not found in environment variables")
 
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)

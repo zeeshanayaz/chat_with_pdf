@@ -3,23 +3,27 @@ import logging
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 from utils.pdf_processor import extract_text_from_pdf, get_answer_from_openai
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" else logging.INFO)
 
 # Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
 # Configure upload settings
-UPLOAD_FOLDER = '/tmp/uploads'
-ALLOWED_EXTENSIONS = {'pdf'}
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "./uploads")
+ALLOWED_EXTENSIONS = set(os.environ.get("ALLOWED_EXTENSIONS", "pdf").split(','))
 
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))  # Default: 16MB
 
 # Check if file has an allowed extension
 def allowed_file(filename):
