@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Question Answering</title>
+    <!-- Bootstrap CSS (Replit theme) -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container my-4">
+        <h1 class="text-center mb-4">PDF Question Answering</h1>
+
+        <!-- Step 1: Upload PDF -->
+        <div class="card mb-4" id="upload-section">
+            <div class="card-header">
+                <h4><i class="fas fa-file-pdf me-2"></i>Step 1: Upload PDF</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="pdfFile" class="form-label">Select a PDF file:</label>
+                    <input class="form-control" type="file" id="pdfFile" accept=".pdf">
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" id="uploadBtn">
+                        <i class="fas fa-upload me-2"></i>Upload PDF
+                    </button>
+                </div>
+                <div class="mt-3" id="uploadStatus"></div>
+                <div class="progress mt-3 d-none" id="uploadProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         aria-valuenow="0" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"
+                         style="width: 0%">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Ask Questions -->
+        <div class="card mb-4 d-none" id="question-section">
+            <div class="card-header">
+                <h4><i class="fas fa-question-circle me-2"></i>Step 2: Ask Questions</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="questionInput" class="form-label">Your Question:</label>
+                    <textarea class="form-control" id="questionInput" rows="3" placeholder="Ask a question about the PDF content..."></textarea>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" id="askBtn">
+                        <i class="fas fa-search me-2"></i>Get Answer
+                    </button>
+                </div>
+                <div class="mt-3 d-none" id="loadingAnswer">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <p class="text-center mt-2">Getting answer from AI...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Answer Display -->
+        <div class="card mb-4 d-none" id="answer-section">
+            <div class="card-header">
+                <h4><i class="fas fa-comment-dots me-2"></i>Answer</h4>
+            </div>
+            <div class="card-body">
+                <div id="answerContent" class="p-3 border rounded"></div>
+                <button class="btn btn-link mt-3" id="newQuestionBtn">Ask another question</button>
+                <button class="btn btn-link mt-3" id="newPdfBtn">Upload a new PDF</button>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div class="alert alert-danger d-none" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="errorMessage"></span>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
