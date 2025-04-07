@@ -6,6 +6,7 @@ let pdfText = '';
 // DOM elements
 const uploadBtn = document.getElementById('uploadBtn');
 const askBtn = document.getElementById('askBtn');
+const quitBtn = document.getElementById('quitBtn');
 const newQuestionBtn = document.getElementById('newQuestionBtn');
 const newPdfBtn = document.getElementById('newPdfBtn');
 const pdfFileInput = document.getElementById('pdfFile');
@@ -28,6 +29,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ask question button
     askBtn.addEventListener('click', askQuestion);
+    
+    // Quit button
+    document.getElementById('quitBtn').addEventListener('click', function() {
+        // Reset all sections to initial state
+        resetUI();
+    });
     
     // New question button
     newQuestionBtn.addEventListener('click', function() {
