@@ -13,6 +13,7 @@ const quitBtn = document.getElementById('quitBtn');
 const newQuestionBtn = document.getElementById('newQuestionBtn');
 const newPdfBtn = document.getElementById('newPdfBtn');
 const pdfFileInput = document.getElementById('pdfFile');
+const clearFileBtn = document.getElementById('clearFileBtn');
 const questionInput = document.getElementById('questionInput');
 const uploadStatus = document.getElementById('uploadStatus');
 const uploadProgress = document.getElementById('uploadProgress');
@@ -38,13 +39,23 @@ document.addEventListener('DOMContentLoaded', function() {
         resetUI();
     });
     
+    // Clear file button
+    clearFileBtn.addEventListener('click', function() {
+        pdfFileInput.value = '';
+        clearFileBtn.style.display = 'none';
+        uploadStatus.textContent = '';
+        hideError();
+    });
+    
     // PDF file input change
     pdfFileInput.addEventListener('change', function() {
         if (pdfFileInput.files.length > 0) {
             uploadStatus.textContent = `File selected: ${pdfFileInput.files[0].name}`;
             uploadStatus.className = 'mt-3 text-info';
+            clearFileBtn.style.display = 'block';
         } else {
             uploadStatus.textContent = '';
+            clearFileBtn.style.display = 'none';
         }
     });
     
@@ -63,19 +74,35 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Function to add a message to the chat
-function addMessageToChat(text, sender, timestamp = new Date()) {
+function addMessageToChat(sender, text, timestamp = new Date()) {
     // Create message container
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender === 'user' ? 'user-message' : 'ai-message'}`;
     
+    // Create message content container
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    // Add sender label
+    const senderLabel = document.createElement('div');
+    senderLabel.className = 'sender-label';
+    senderLabel.textContent = sender === 'user' ? 'You' : 'Assistant';
+    contentDiv.appendChild(senderLabel);
+    
     // Add message text
-    messageDiv.textContent = text;
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = text;
+    contentDiv.appendChild(textDiv);
     
     // Add timestamp
     const timeSpan = document.createElement('span');
     timeSpan.className = 'message-time';
     timeSpan.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    messageDiv.appendChild(timeSpan);
+    contentDiv.appendChild(timeSpan);
+    
+    // Add content to message container
+    messageDiv.appendChild(contentDiv);
     
     // Add to chat container
     chatMessages.appendChild(messageDiv);
@@ -89,6 +116,8 @@ function addMessageToChat(text, sender, timestamp = new Date()) {
         sender: sender,
         timestamp: timestamp
     });
+    
+    return messageDiv;
 }
 
 // Function to upload PDF
@@ -188,90 +217,52 @@ function uploadPdf() {
         // Reset progress bar
         uploadProgress.classList.add('d-none');
         
+        // Clear upload status
+        uploadStatus.textContent = '';
+        
         // Re-enable upload button
         uploadBtn.disabled = false;
     });
 }
 
 // Function to ask a question
-function askQuestion() {
-    // Check if question is empty
+async function askQuestion() {
     const question = questionInput.value.trim();
-    if (!question) {
-        showError('Please enter a question.');
-        return;
-    }
-    
-    // Check if we have PDF text
-    if (!pdfText) {
-        showError('No PDF content available. Please upload a PDF first.');
-        return;
-    }
-    
-    // Disable ask button and show loading
-    askBtn.disabled = true;
-    
+    if (!question) return;
+
     // Add user question to chat
-    addMessageToChat(question, 'user');
-    
-    // Clear question input
+    addMessageToChat('user', question);
     questionInput.value = '';
-    
-    // Show loading indicator in chat
-    loadingAnswer.classList.remove('d-none');
-    
-    // Hide any previous errors
-    hideError();
-    
-    // Send request to server
-    fetch('/ask', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            question: question,
-            pdfText: pdfText
-        })
-    })
-    .then(response => {
+
+    // Show loading state
+    const loadingMessage = addMessageToChat('assistant', 'Thinking...');
+    loadingMessage.classList.add('loading');
+
+    try {
+        const response = await fetch('/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+
         if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error || 'Error getting answer');
-            });
+            throw new Error(data.error || 'Failed to get answer');
         }
-        return response.json();
-    })
-    .then(data => {
-        // Hide loading
-        loadingAnswer.classList.add('d-none');
-        
-        // Add AI response to chat
-        addMessageToChat(data.answer, 'ai');
-        
-        // Re-enable ask button
-        askBtn.disabled = false;
-        
-        // Focus on question input
-        questionInput.focus();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showError(error.message);
-        
-        // Hide loading and re-enable ask button
-        loadingAnswer.classList.add('d-none');
-        askBtn.disabled = false;
-        
-        // Add error message to chat
-        const systemErrorDiv = document.createElement('div');
-        systemErrorDiv.className = 'system-message text-center p-2 mb-3';
-        systemErrorDiv.innerHTML = `
-            <span class="badge bg-danger">Error</span>
-            <p class="small mt-1">${error.message}</p>
-        `;
-        chatMessages.appendChild(systemErrorDiv);
-    });
+
+        // Update loading message with actual answer
+        loadingMessage.textContent = data.answer;
+        loadingMessage.classList.remove('loading');
+
+    } catch (error) {
+        // Update loading message with error
+        loadingMessage.textContent = error.message;
+        loadingMessage.classList.remove('loading');
+        loadingMessage.classList.add('error');
+    }
 }
 
 // Function to show error message
@@ -282,7 +273,7 @@ function showError(message) {
     // Auto-hide after 5 seconds
     setTimeout(() => {
         hideError();
-    }, 5000);
+    }, 10000);
 }
 
 // Function to hide error message

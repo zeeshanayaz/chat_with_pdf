@@ -1,8 +1,15 @@
 import os
-import PyPDF2
 import logging
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, APIConnectionError, APIError
 from dotenv import load_dotenv
+from llama_index.core import VectorStoreIndex, Settings
+from llama_index.core.node_parser import SimpleNodeParser
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.readers.file import PDFReader
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.llms.openai import OpenAI
+from httpx import HTTPStatusError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,126 +19,121 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     logging.warning("OpenAI API key not found in environment variables")
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client with retries disabled
+client = OpenAI(
+    api_key=OPENAI_API_KEY,
+    max_retries=0  # Disable retries
+)
 
-def extract_text_from_pdf(pdf_path):
+# Configure OpenAI embeddings with retries disabled
+Settings.embed_model = OpenAIEmbedding(
+    model="text-embedding-3-small",  # Using a smaller model to reduce token usage
+    max_retries=0  # Disable retries
+)
+
+def process_pdf(pdf_path):
     """
-    Extract text from a PDF file
+    Process PDF file and create vector store index
     
     Parameters:
     pdf_path (str): Path to the PDF file
     
     Returns:
-    str: Extracted text from the PDF
+    VectorStoreIndex: Index created from the PDF content
+    
+    Raises:
+    Exception: If there's an error processing the PDF
     """
-    text = ""
-    
-    # Open the PDF file
-    with open(pdf_path, 'rb') as file:
-        # Create a PDF reader object
-        pdf_reader = PyPDF2.PdfReader(file)
-        
-        # Get the number of pages in the PDF
-        num_pages = len(pdf_reader.pages)
-        
-        # Extract text from each page
-        for page_num in range(num_pages):
-            page = pdf_reader.pages[page_num]
-            text += page.extract_text()
-    
-    return text
-
-def chunk_text(text, chunk_size=4000, overlap=200):
-    """
-    Split text into chunks of specified size with overlap
-    
-    Parameters:
-    text (str): Text to chunk
-    chunk_size (int): Maximum chunk size
-    overlap (int): Number of characters to overlap between chunks
-    
-    Returns:
-    list: List of text chunks
-    """
-    chunks = []
-    start = 0
-    
-    while start < len(text):
-        end = min(start + chunk_size, len(text))
-        
-        # Ensure we're not cutting in the middle of a word
-        if end < len(text):
-            # Find the last space before the end
-            while end > start and text[end] != ' ':
-                end -= 1
-            
-            if end == start:  # No space found, use the original end
-                end = min(start + chunk_size, len(text))
-        
-        chunks.append(text[start:end])
-        
-        # Move start position for next chunk, considering overlap
-        start = end - overlap if end < len(text) else len(text)
-    
-    return chunks
-
-def get_answer_from_openai(pdf_text, question):
-    """
-    Get an answer from OpenAI based on the PDF text and question
-    
-    Parameters:
-    pdf_text (str): Text extracted from PDF
-    question (str): User's question
-    
-    Returns:
-    str: Answer from OpenAI
-    """
-    # Check if API key is available
-    if not OPENAI_API_KEY:
-        return "Error: OpenAI API key not found. Please set the OPENAI_API_KEY environment variable."
-    
-    # Chunk the text to fit within token limits
-    chunks = chunk_text(pdf_text)
-    
-    # Create a context from the chunks - use only the first few chunks to stay within token limits
-    # In a more advanced implementation, we would use embeddings to find relevant chunks
-    context = "\n\n".join(chunks[:3])
-    
-    # Truncate if still too long
-    if len(context) > 10000:
-        context = context[:10000] + "..."
-    
-    # Create the prompt for OpenAI
-    prompt = f"""
-    You are an assistant that answers questions based on the provided PDF content.
-    
-    PDF CONTENT:
-    {context}
-    
-    USER QUESTION:
-    {question}
-    
-    Your task is to answer the user's question based ONLY on the information provided in the PDF content.
-    If the answer cannot be found in the PDF content, politely state that the information is not available in the provided document.
-    """
-    
     try:
-        # Get the response from OpenAI
-        # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-        # do not change this unless explicitly requested by the user
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Using GPT-4o-mini for efficiency and cost
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that answers questions based on PDF content."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000
-        )
+        # First, check if the file exists and is readable
+        if not os.path.exists(pdf_path):
+            raise Exception("PDF file not found")
         
-        # Extract the answer from the response
-        answer = response.choices[0].message.content
+        # Check file size
+        file_size = os.path.getsize(pdf_path)
+        if file_size > 10 * 1024 * 1024:  # 10MB limit
+            raise Exception("PDF file is too large (maximum 10MB)")
         
-        return answer
+        # Read PDF file using PDFReader
+        reader = PDFReader()
+        documents = reader.load_data(file=pdf_path)
+        
+        # Check if we got any content
+        if not documents or len(documents) == 0:
+            raise Exception("No content found in PDF")
+        
+        # Chunk the document into smaller sections
+        parser = SimpleNodeParser.from_defaults(chunk_size=512)
+        nodes = parser.get_nodes_from_documents(documents)
+        
+        # Check if we got any nodes
+        if not nodes or len(nodes) == 0:
+            raise Exception("Could not extract text from PDF")
+        
+        # Create an index from chunked nodes
+        index = VectorStoreIndex(nodes)
+        
+        return index
+        
+    except (RateLimitError, HTTPStatusError) as e:
+        error_msg = "OpenAI API quota exceeded. Please check your billing details and current quota."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
+    except APIConnectionError as e:
+        error_msg = "Failed to connect to OpenAI API. Please check your internet connection."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
+    except APIError as e:
+        error_msg = "OpenAI API error. Please check your API key and billing status."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
     except Exception as e:
-        return f"Error: Failed to get answer from OpenAI: {str(e)}"
+        error_msg = f"Error processing PDF: {str(e)}"
+        logging.error(error_msg)
+        raise Exception(error_msg)
+
+def get_answer_from_pdf(question, index):
+    """
+    Get answer to a question from PDF content using the stored index
+    
+    Parameters:
+    question (str): The question to answer
+    index (VectorStoreIndex): The pre-processed index of the PDF
+    
+    Returns:
+    str: The answer to the question
+    
+    Raises:
+    Exception: If there's an error getting the answer
+    """
+    try:
+        # Create query engine from the index
+        query_engine = index.as_query_engine()
+        
+        # Query the index
+        response = query_engine.query(question)
+        
+        return str(response)
+        
+    except (RateLimitError, HTTPStatusError) as e:
+        error_msg = "OpenAI API quota exceeded. Please check your billing details and current quota."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
+    except APIConnectionError as e:
+        error_msg = "Failed to connect to OpenAI API. Please check your internet connection."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
+    except APIError as e:
+        error_msg = "OpenAI API error. Please check your API key and billing status."
+        logging.error(f"{error_msg} Error: {str(e)}")
+        raise Exception(error_msg)
+        
+    except Exception as e:
+        error_msg = f"Error getting answer: {str(e)}"
+        logging.error(error_msg)
+        raise Exception(error_msg)
