@@ -60,21 +60,26 @@ class ChromaStore:
             logging.error(f"Error storing PDF data: {str(e)}")
             raise
 
-    def get_similar_chunks(self, query_embedding, n_results=5):
+    def get_similar_chunks(self, query_embedding, n_results=5, file_name=None):
         """
         Get similar chunks based on query embedding
         
         Parameters:
         query_embedding (list): Embedding vector for the query
         n_results (int): Number of similar chunks to return
+        file_name (str, optional): Name of the PDF file to search within
         
         Returns:
         list: List of similar chunks with their metadata
         """
         try:
+            # If file_name is provided, only search within that file's chunks
+            where = {"file_name": file_name} if file_name else None
+            
             results = self.collection.query(
                 query_embeddings=[query_embedding],
-                n_results=n_results
+                n_results=n_results,
+                where=where  # Filter by file_name if provided
             )
             
             # Format results

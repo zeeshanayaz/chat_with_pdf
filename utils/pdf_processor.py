@@ -136,8 +136,8 @@ def get_answer_from_pdf(question, index=None, file_name=None):
         # If file_name is provided, use stored embeddings from ChromaDB
         if file_name:
             logger.info(f"Using stored embeddings for file: {file_name}")
-            # Get similar chunks from ChromaDB
-            similar_chunks = chroma_store.get_similar_chunks(question_embedding, n_results=3)
+            # Get similar chunks from ChromaDB for this specific file
+            similar_chunks = chroma_store.get_similar_chunks(question_embedding, n_results=3, file_name=file_name)
             if not similar_chunks or len(similar_chunks) == 0:
                 raise Exception("No relevant content found in PDF")
             
@@ -153,8 +153,8 @@ def get_answer_from_pdf(question, index=None, file_name=None):
         # If index is provided, use it directly
         elif index:
             logger.info("Using provided index for querying")
-            # Get similar chunks from ChromaDB
-            similar_chunks = chroma_store.get_similar_chunks(question_embedding, n_results=3)
+            # Get similar chunks from ChromaDB for this specific file
+            similar_chunks = chroma_store.get_similar_chunks(question_embedding, n_results=3, file_name=file_name)
             if not similar_chunks or len(similar_chunks) == 0:
                 raise Exception("No relevant content found in PDF")
             
