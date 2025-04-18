@@ -152,6 +152,7 @@ def ask_question():
     
     try:
         logger.info(f"PDF path from session: {pdf_path}")
+        file_name = os.path.basename(pdf_path)
         
         # Use the global index
         if not current_index:
@@ -159,9 +160,9 @@ def ask_question():
             current_index = process_pdf(pdf_path)
             logger.info("Index recreated successfully")
         
-        # Get answer using the index
+        # Get answer using the index and file name
         logger.info("Getting answer from PDF...")
-        answer = get_answer_from_pdf(question, current_index)
+        answer = get_answer_from_pdf(question, current_index, file_name)
         logger.info("Answer generated successfully")
         
         return jsonify({'answer': answer})
