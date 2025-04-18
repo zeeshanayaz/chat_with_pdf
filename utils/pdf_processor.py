@@ -8,7 +8,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.readers.file import PDFReader
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai import OpenAI as LlamaOpenAI
 from httpx import HTTPStatusError
 from utils.chroma_store import ChromaStore
 from datetime import datetime
@@ -37,12 +37,15 @@ Settings.embed_model = OpenAIEmbedding(
     api_key=os.environ.get("OPENAI_API_KEY"),
     max_retries=0  # Disable retries for embeddings too
 )
-Settings.llm = OpenAI(
+
+# Initialize LlamaIndex OpenAI client with no retries
+llm = LlamaOpenAI(
     model="gpt-3.5-turbo",
     temperature=0.1,
     api_key=os.environ.get("OPENAI_API_KEY"),
     max_retries=0  # Disable retries for completions too
 )
+Settings.llm = llm
 
 # Initialize ChromaDB
 chroma_store = ChromaStore()
