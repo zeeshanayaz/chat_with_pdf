@@ -45,6 +45,34 @@
                          style="width: 0%">
                     </div>
                 </div>
+
+                <!-- Uploaded Pdfs list -->
+                <div class="card mb-4" id="pdf-list-section">
+                    <div class="card-header">
+                        <h4><i class="fas fa-list me-2"></i>Previously Uploaded PDFs</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>File Name</th>
+                                        <!-- <th>Size</th> -->
+                                        <th>Chunks</th>
+                                        <th>Processed</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pdfList">
+                                    <!-- PDF list will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center" id="noPdfsMessage">
+                            <p class="text-muted">No PDFs have been uploaded yet.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

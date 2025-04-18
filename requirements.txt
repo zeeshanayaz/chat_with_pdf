@@ -1,9 +1,11 @@
-flask==3.0.3
+flask==3.0.2
 python-dotenv==1.0.1
 openai==1.12.0
 llama-index==0.10.20
-llama-index-readers-file==0.1.6
+llama-index-core==0.10.20
+llama-index-readers-file==0.1.5
 llama-index-embeddings-openai==0.1.6
-llama-index-llms-openai==0.1.6
+llama-index-llms-openai==0.1.7
+chromadb==0.4.22
+langchain==0.1.9
 pypdf==4.0.1
-Flask-Session==0.8.0 

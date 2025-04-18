@@ -27,6 +27,9 @@ const errorMessage = document.getElementById('errorMessage');
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Load PDFs when page loads
+    loadPdfList();
+    
     // Upload PDF button
     uploadBtn.addEventListener('click', uploadPdf);
     
@@ -270,7 +273,7 @@ function showError(message) {
     errorMessage.textContent = message;
     errorAlert.classList.remove('d-none');
     
-    // Auto-hide after 5 seconds
+    // Auto-hide after 10 seconds
     setTimeout(() => {
         hideError();
     }, 10000);
@@ -310,4 +313,151 @@ function resetUI() {
     
     // Hide any errors
     hideError();
+}
+
+// Function to format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Function to format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Function to load PDF list
+async function loadPdfList() {
+    try {
+        const response = await fetch('/list-pdfs');
+        const pdfs = await response.json();
+        
+        const pdfList = document.getElementById('pdfList');
+        const noPdfsMessage = document.getElementById('noPdfsMessage');
+        
+        if (pdfs.length === 0) {
+            pdfList.innerHTML = '';
+            noPdfsMessage.classList.remove('d-none');
+            return;
+        }
+        
+        noPdfsMessage.classList.add('d-none');
+        pdfList.innerHTML = pdfs.map(pdf => `
+            <tr>
+                <td>${pdf.file_name}</td>
+                <td>${pdf.total_chunks} chunks</td>
+                <td>${formatDate(pdf.upload_time)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary load-pdf" data-filename="${pdf.file_name}">
+                        <i class="fas fa-comments"></i> Chat
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-pdf" data-filename="${pdf.file_name}">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // Add event listeners to buttons
+        document.querySelectorAll('.load-pdf').forEach(button => {
+            button.addEventListener('click', function() {
+                const fileName = this.getAttribute('data-filename');
+                loadPdfForChat(fileName);
+            });
+        });
+        
+        document.querySelectorAll('.delete-pdf').forEach(button => {
+            button.addEventListener('click', function() {
+                const fileName = this.getAttribute('data-filename');
+                deletePdf(fileName);
+            });
+        });
+        
+    } catch (error) {
+        console.error('Error loading PDF list:', error);
+        showError('Failed to load PDF list. Please try again.');
+    }
+}
+
+// Function to load PDF for chat
+async function loadPdfForChat(fileName) {
+    try {
+        const response = await fetch('/load-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file_name: fileName })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load PDF');
+        }
+        
+        // Hide upload section and show chat section
+        document.getElementById('upload-section').classList.add('d-none');
+        document.getElementById('chat-section').classList.remove('d-none');
+        
+        // Clear chat history
+        chatHistory = [];
+        
+        // Clear chat messages and add system message
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML = `
+            <div class="system-message text-center p-2 mb-3">
+                <span class="badge bg-info">PDF Loaded Successfully</span>
+                <p class="small mt-1">Loaded PDF: ${fileName}</p>
+                <p class="small">Ask any question about the content of your PDF document.</p>
+            </div>
+        `;
+        
+        // Enable question input and button
+        questionInput.disabled = false;
+        askBtn.disabled = false;
+        questionInput.focus();
+        
+    } catch (error) {
+        console.error('Error loading PDF:', error);
+        showError(error.message || 'Failed to load PDF. Please try again.');
+    }
+}
+
+// Function to delete PDF
+async function deletePdf(fileName) {
+    if (!confirm(`Are you sure you want to delete ${fileName}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/delete-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file_name: fileName })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete PDF');
+        }
+        
+        // Reload PDF list
+        await loadPdfList();
+        
+    } catch (error) {
+        console.error('Error deleting PDF:', error);
+        showError('Failed to delete PDF. Please try again.');
+    }
 }
