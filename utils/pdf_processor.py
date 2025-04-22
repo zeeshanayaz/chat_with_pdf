@@ -64,9 +64,20 @@ def process_pdf(pdf_path: str) -> VectorStoreIndex:
         # Load and process PDF
         documents = SimpleDirectoryReader(input_files=[pdf_path]).load_data()
         
-        # Create index with embeddings
+        # Filter out empty documents and create index with valid content
+        valid_documents = []
+        for doc in documents:
+            if doc.text and doc.text.strip():  # Check if document has non-empty text
+                valid_documents.append(doc)
+            else:
+                logging.info(f"Skipping empty or image-only page in {file_name}")
+        
+        if not valid_documents:
+            raise Exception("No valid text content found in PDF")
+            
+        # Create index with valid documents
         index = VectorStoreIndex.from_documents(
-            documents,
+            valid_documents,
             service_context=ServiceContext.from_defaults(
                 embed_model=Settings.embed_model
             )
@@ -82,17 +93,21 @@ def process_pdf(pdf_path: str) -> VectorStoreIndex:
         metadatas = []
         
         for i, node in enumerate(nodes):
-            # Get embedding for the node text
-            embedding = Settings.embed_model.get_text_embedding(node.text)
-            embeddings.append(embedding)
-            chunks.append(node.text)
-            metadatas.append({
-                "file_name": file_name,
-                "chunk_index": i,
-                "timestamp": datetime.now().isoformat(),
-                "total_chunks": len(nodes),
-                "chunk_size": len(node.text)
-            })
+            try:
+                # Get embedding for the node text
+                embedding = Settings.embed_model.get_text_embedding(node.text)
+                embeddings.append(embedding)
+                chunks.append(node.text)
+                metadatas.append({
+                    "file_name": file_name,
+                    "chunk_index": i,
+                    "timestamp": datetime.now().isoformat(),
+                    "total_chunks": len(nodes),
+                    "chunk_size": len(node.text)
+                })
+            except Exception as e:
+                logging.warning(f"Skipping chunk {i} due to error: {str(e)}")
+                continue
         
         if not embeddings:
             raise Exception("No embeddings generated")
