@@ -68,10 +68,10 @@ def upload_file():
             file_size = len(file.read())
             file.seek(0)  # Reset file pointer
             
-            logger.info(f"File size: {file_size} bytes")
+            logger.info(f"File size: {file_size} bytes ({file_size / (1024 * 1024):.2f} MB)")
             
             if file_size > app.config['MAX_CONTENT_LENGTH']:
-                logger.error(f"File too large: {file_size} bytes")
+                logger.error(f"File too large: {file_size} bytes ({file_size / (1024 * 1024):.2f} MB)")
                 return jsonify({
                     'error': f'File too large. Maximum size is {app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024):.1f}MB',
                     'status': 'error'
