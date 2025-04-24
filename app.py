@@ -91,6 +91,7 @@ def upload_file():
                 
                 # Store the filepath in session and index in global variable
                 session['current_pdf_path'] = filepath
+                print ("index on upload", index)
                 current_index = index
                 logger.info("PDF path and index stored")
                 
@@ -154,11 +155,8 @@ def ask_question():
         logger.info(f"PDF path from session: {pdf_path}")
         file_name = os.path.basename(pdf_path)
         
-        # Use the global index
-        if not current_index:
-            logger.info("Index not found, recreating...")
-            current_index = process_pdf(pdf_path)
-            logger.info("Index recreated successfully")
+        current_index = process_pdf(pdf_path)
+        logger.info("Index recreated successfully")
         
         # Get answer using the index and file name
         logger.info("Getting answer from PDF...")
