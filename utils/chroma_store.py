@@ -1,6 +1,10 @@
 import chromadb
 import logging
 from datetime import datetime
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+import json
 
 class ChromaStore:
     def __init__(self):
@@ -75,13 +79,41 @@ class ChromaStore:
         try:
             # If file_name is provided, only search within that file's chunks
             where = {"file_name": file_name} if file_name else None
-            
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n_results,
-                where=where  # Filter by file_name if provided
-            )
-            
+            logger.info(f"file_name: {file_name}")
+            logger.info(f"query_embedding: {query_embedding}")
+            logger.info(f"n_results: {n_results}")
+            logger.info(f"where: {json.dumps(where, indent=2)}")
+
+            # Check available file names to avoid empty search
+            all_metadata = self.collection.get(include=["metadatas"])["metadatas"]
+            file_names = set(md.get("file_name") for md in all_metadata if "file_name" in md)
+            logger.info(f"Available file_names: {file_names}")
+
+            if file_name and file_name not in file_names:
+                logger.warning(f"Requested file_name '{file_name}' not found in collection.")
+                return []  # No need to query, return empty immediately
+
+            if where:
+                logger.info("Running query WITH where filter")
+                results = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=n_results,
+                    where=where
+                )
+            else:
+                logger.info("Running query WITHOUT where filter")
+                results = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=n_results
+                )
+
+            logger.info(f"Raw results: {json.dumps(results, indent=2)}")
+
+            # Safely handle empty results
+            if not results['ids'] or not results['ids'][0]:
+                logger.warning(f"No matching chunks found for file: {file_name}")
+                return []
+
             # Format results
             similar_chunks = []
             for i in range(len(results['ids'][0])):
@@ -91,9 +123,9 @@ class ChromaStore:
                     'metadata': results['metadatas'][0][i],
                     'distance': results['distances'][0][i]
                 })
-            
+
             return similar_chunks
-            
+
         except Exception as e:
             logging.error(f"Error getting similar chunks: {str(e)}")
             raise
