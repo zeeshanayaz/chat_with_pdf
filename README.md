@@ -24,12 +24,20 @@ git clone https://github.com/your-username/chat_with_pdf.git
 cd chat_with_pdf
 ```
 
-### 2. Install Dependencies
+### 2. Setup Virtual Environment
+```bash
+# Creating Virtual Environment as myenv
+pip install virtualenv
+virtualenv myenv
+myenv\Scripts\activate.bat
+```
+
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Create .env File
+### 4. Create .env File
 Create a file named .env in the root directory and add the following content:
 ```bash
 # Environment variables for PDF Question Answering app
@@ -45,7 +53,7 @@ ALLOWED_EXTENSIONS=pdf
 ```
 ⚠️ Replace API-KEY with your actual OpenAI API key.
 
-### 4. Run the App
+### 5. Run the App
 ```bash
 python main.py
 ```
