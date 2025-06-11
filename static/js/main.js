@@ -6,6 +6,9 @@ let pdfText = '';
 // Store chat history
 let chatHistory = [];
 
+// Add to the top with other global variables
+let selectedPdfs = new Set();
+
 // DOM elements
 const uploadBtn = document.getElementById('uploadBtn');
 const askBtn = document.getElementById('askBtn');
@@ -336,7 +339,88 @@ function formatDate(dateString) {
     });
 }
 
-// Function to load PDF list
+// Function to handle PDF selection
+function handlePdfSelection() {
+    const checkboxes = document.querySelectorAll('.pdf-checkbox');
+    const multiSelectActions = document.getElementById('multiSelectActions');
+    const selectAllCheckbox = document.getElementById('selectAllPdfs');
+    
+    // Update selected PDFs set
+    selectedPdfs.clear();
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedPdfs.add(checkbox.value);
+        }
+    });
+    
+    // Show/hide multi-select actions
+    multiSelectActions.style.display = selectedPdfs.size > 0 ? 'block' : 'none';
+    
+    // Update select all checkbox
+    selectAllCheckbox.checked = checkboxes.length > 0 && 
+        Array.from(checkboxes).every(checkbox => checkbox.checked);
+}
+
+// Function to handle select all checkbox
+function handleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllPdfs');
+    const checkboxes = document.querySelectorAll('.pdf-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+        if (selectAllCheckbox.checked) {
+            selectedPdfs.add(checkbox.value);
+        } else {
+            selectedPdfs.delete(checkbox.value);
+        }
+    });
+    
+    document.getElementById('multiSelectActions').style.display = 
+        selectAllCheckbox.checked ? 'block' : 'none';
+}
+
+// Function to cancel selection
+function cancelSelection() {
+    const checkboxes = document.querySelectorAll('.pdf-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllPdfs');
+    
+    checkboxes.forEach(checkbox => checkbox.checked = false);
+    selectAllCheckbox.checked = false;
+    selectedPdfs.clear();
+    document.getElementById('multiSelectActions').style.display = 'none';
+}
+
+// Function to chat with selected PDFs
+function chatWithSelected() {
+    if (selectedPdfs.size === 0) {
+        showError('Please select at least one PDF');
+        return;
+    }
+    
+    // Hide upload section and show chat section
+    document.getElementById('upload-section').classList.add('d-none');
+    document.getElementById('chat-section').classList.remove('d-none');
+    
+    // Clear chat history
+    chatHistory = [];
+    
+    // Clear chat messages and add system message
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.innerHTML = `
+        <div class="system-message text-center p-2 mb-3">
+            <span class="badge bg-info">PDFs Loaded Successfully</span>
+            <p class="small mt-1">Loaded PDFs: ${Array.from(selectedPdfs).join(', ')}</p>
+            <p class="small">Ask any question about the content of your selected PDF documents.</p>
+        </div>
+    `;
+    
+    // Enable question input and button
+    questionInput.disabled = false;
+    askBtn.disabled = false;
+    questionInput.focus();
+}
+
+// Modify the loadPdfList function
 async function loadPdfList() {
     try {
         const response = await fetch('/list-pdfs');
@@ -354,6 +438,10 @@ async function loadPdfList() {
         noPdfsMessage.classList.add('d-none');
         pdfList.innerHTML = pdfs.map(pdf => `
             <tr>
+                <td>
+                    <input type="checkbox" class="form-check-input pdf-checkbox" 
+                           value="${pdf.file_name}" data-filename="${pdf.file_name}">
+                </td>
                 <td>${pdf.file_name}</td>
                 <td>${pdf.total_chunks} chunks</td>
                 <td>${formatDate(pdf.upload_time)}</td>
@@ -368,7 +456,19 @@ async function loadPdfList() {
             </tr>
         `).join('');
         
-        // Add event listeners to buttons
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.pdf-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', handlePdfSelection);
+        });
+        
+        // Add event listener to select all checkbox
+        document.getElementById('selectAllPdfs').addEventListener('change', handleSelectAll);
+        
+        // Add event listeners to action buttons
+        document.getElementById('chatSelectedBtn').addEventListener('click', chatWithSelected);
+        document.getElementById('cancelSelectionBtn').addEventListener('click', cancelSelection);
+        
+        // Add event listeners to existing buttons
         document.querySelectorAll('.load-pdf').forEach(button => {
             button.addEventListener('click', function() {
                 const fileName = this.getAttribute('data-filename');
